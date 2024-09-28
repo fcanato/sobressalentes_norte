@@ -1,95 +1,232 @@
-
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 from io import BytesIO
+import os
+from datetime import datetime
 
-# Definir a configuração da página antes de qualquer outra chamada do Streamlit
-st.set_page_config(page_title="Relatório Completo de Sobressalentes", layout="wide")
 
 # Função para limpar e processar os dados brutos e salvar como "planilhas.xlsx"
-def processar_dados_iniciais(file):
-    base = pd.read_excel(file)
-    volante = pd.read_excel(file, sheet_name='volante')
-    reparo = pd.read_excel(file, sheet_name='reparo')
-    sob = pd.read_excel(file, sheet_name='sobressalentes')
 
-    # Remover espaços em branco dos nomes das colunas
+st.set_page_config(page_title="Relatório Completo de Sobressalentes", layout="wide")
+
+
+st.title("Relatório Completo de Sobressalentes")
+
+# Upload do arquivo de dados brutos
+file = st.file_uploader("Carregar arquivo Excel com os dados brutos", type=["xlsx"])
+if file:
+    st.success("Arquivo carregado com sucesso. Processando os dados...")
+
+    base = pd.read_excel('dados_brutos.xlsx')
+    volante = pd.read_excel('dados_brutos.xlsx', sheet_name='volante')
+    reparo = pd.read_excel('dados_brutos.xlsx', sheet_name='reparo')
+    sob = pd.read_excel('dados_brutos.xlsx', sheet_name='sobressalentes')
+
+        # Remover espaços em branco dos nomes das colunas
     base.columns = [x.strip() for x in base.columns]
     volante.columns = [x.strip() for x in volante.columns]
     reparo.columns = [x.strip() for x in reparo.columns]
     sob.columns = [x.strip() for x in sob.columns]
 
-    # Limpeza e filtragem das planilhas
+        # Limpeza e filtragem das planilhas
     reparo = reparo[['Cód. Produto','Desc. Produto','Complemento Remessa','RMA','MBI','Desc. Status','N° Nota Fiscal',
-        'Série Nota Fiscal','Quantidade','Cód. Estoque Físico','Desc. Estoque Físico','Data Últ. Alteração',
-        'Material do Fornecedor','Cód. Natureza NF','Desc. Natureza NF','Cód. Fornecedor','Fornecedor',
-        'TA','Data Status Atual','Cód. RM','Data Cadastro RM','Data Empenho RM','Data Fechamento RM',
-        'Cód. Doc. Entrada','Data Fech. Doc. Entrada','Complemento Doc. Entrada','Data Aguard. RMA',
-        'Data Aguard. Rem. Fornec.','Data Aguard. Operacional','Data Aguard. Aprov. Contr.','Data Aguard. Escrituração',
-        'Data Aguard. NF','Data Aguard. ST','Data Aguard. Coleta','Data Coletado Em Trânsito','Data Recebido Fornecedor',
-        'Observação']]
-    reparo = reparo[reparo['Desc. Produto'] != 'COLETADO/TRÂNSITO']
+            'Série Nota Fiscal','Quantidade','Cód. Estoque Físico','Desc. Estoque Físico','Data Últ. Alteração',
+            'Material do Fornecedor','Cód. Natureza NF','Desc. Natureza NF','Cód. Fornecedor','Fornecedor',
+            'TA','Data Status Atual','Cód. RM','Data Cadastro RM','Data Empenho RM','Data Fechamento RM',
+            'Cód. Doc. Entrada','Data Fech. Doc. Entrada','Complemento Doc. Entrada','Data Aguard. RMA',
+            'Data Aguard. Rem. Fornec.','Data Aguard. Operacional','Data Aguard. Aprov. Contr.','Data Aguard. Escrituração',
+            'Data Aguard. NF','Data Aguard. ST','Data Aguard. Coleta','Data Coletado Em Trânsito','Data Recebido Fornecedor',
+            'Observação']]
+        
+    reparo = reparo[reparo['Desc. Status']!='COLETADO/TRÂNSITO']
 
-    base = base[['Cód. Produto', 'Desc. Produto', 'Qtd Estoque', 'Serial', 'Part Number', 'Code', 'Classificação', 'Id. Estoq. Físico']]
+    base = base[['Cód. Produto','Desc. Produto','Qtd Estoque','Serial','Part Number','Code','Classificação','Id. Estoq. Físico',
+        'Desc. Estoque Físico']]
 
     volante = volante[['IDTEL','NOME_VOLANTE','CODIGO_PRODUTO','DESCRICAO_PRODUTO','SALDO','COMPLEMENTAR','PART_NUMBER',
-         'QTDE_DIAS_ATEND_ULT_RM','DESCRICAO_CLASSIFICACAO','ITEM_CONTABIL']]
+            'QTDE_DIAS_ATEND_ULT_RM','DESCRICAO_CLASSIFICACAO','ITEM_CONTABIL']]
 
-    # Ajuste de classificação
+        # Ajuste de classificação
     sit = {'MATERIAL DO CLIENTE': 'DISPONÍVEL', 'RETIRADA': 'RETIRADA'}
     volante['DESCRICAO_CLASSIFICACAO'] = volante['DESCRICAO_CLASSIFICACAO'].apply(lambda x: sit.get(x, x))
 
-    sob = sob[['Cód. Produto','Desc. Produto','Qtd Estoque','Serial','Part Number','Code','Classificação','Id. Estoq. Físico',
-      'Desc. Estoque Físico']]
+    sob = sob[['Cód. Produto','Desc. Produto','Qtd Estoque','Serial','Part Number','Classificação',
+                'Id. Estoq. Físico', 'Desc. Estoque Físico']]
 
-    # Criar um arquivo Excel com múltiplas abas limpas como "planilhas.xlsx"
+        # Sobrescrever planilhas antigas e salvar novas planilhas limpas
+    if os.path.exists('planilhas.xlsx'):
+            os.remove('planilhas.xlsx')
+
     with pd.ExcelWriter('planilhas.xlsx', engine='xlsxwriter') as writer:
-        base.to_excel(writer, sheet_name='Saldo', index=False)
-        volante.to_excel(writer, sheet_name='Volante', index=False)
+            base.to_excel(writer, sheet_name='Saldo', index=False)
+            volante.to_excel(writer, sheet_name='Volante', index=False)
+            reparo.to_excel(writer, sheet_name='Reparo', index=False)
+            sob.to_excel(writer, sheet_name='Sobressalentes', index=False)
+
+
+
+
+        # Leitura dos arquivos gerados
+    
+    df = pd.read_excel('planilhas.xlsx')
+    loc = pd.read_excel('localidade.xlsx')
+    vol = pd.read_excel('planilhas.xlsx', sheet_name='Volante')
+    id_tel = pd.read_excel('id_tel.xlsx')
+    fabr = pd.read_excel('fabricante.xlsx')
+    rep = pd.read_excel('planilhas.xlsx', sheet_name='Reparo')
+    sob = pd.read_excel('planilhas.xlsx', sheet_name='Sobressalentes')
+
+        # Remover espaços em branco dos nomes das colunas
+    # Remover espaços em branco dos nomes das colunas
+    for dataset in [df, loc, vol, rep, sob]:
+        dataset.columns = [x.strip() for x in dataset.columns]
+
+
+
+    # Mesclar "sob" com "loc" e "fabr" para adicionar localidades e fabricantes
+    sob = pd.merge(sob, loc[['Id. Estoq. Físico', 'LOCALIDADE']], on='Id. Estoq. Físico', how='left')
+    sob = pd.merge(sob, fabr[['Cód. Produto', 'Fabricante']], on='Cód. Produto', how='left')
+
+    # Separar linhas com Serial vazio e remover duplicatas de Serial não vazios
+    df_serial_vazio = sob[sob['Serial'].isna()]
+    df_sem_duplicatas = sob.dropna(subset=['Serial']).drop_duplicates(subset=['Serial', 'Cód. Produto'], keep='first')
+    sob = pd.concat([df_sem_duplicatas, df_serial_vazio], ignore_index=True)
+
+
+
+    # Reordenar as colunas de "sob"
+    colunas_inicio = ['LOCALIDADE']
+    colunas_fim = ['Id. Estoq. Físico', 'Desc. Estoque Físico']
+    colunas_meio = [col for col in sob.columns if col not in colunas_inicio + colunas_fim]
+    sob = sob[colunas_inicio + colunas_meio + colunas_fim]
+
+    # Mesclar "df" com "loc" e "fabr" para adicionar localidades e fabricantes
+    df = pd.merge(df, loc[['Id. Estoq. Físico', 'LOCALIDADE']], on='Id. Estoq. Físico', how='left')
+    df = pd.merge(df, fabr[['Cód. Produto', 'Fabricante']], on='Cód. Produto', how='left')
+
+    # Separar linhas com Serial vazio e remover duplicatas de Serial não vazios
+    df_serial_vazio = df[df['Serial'].isna()]
+    df_sem_duplicatas = df.dropna(subset=['Serial']).drop_duplicates(subset=['Serial', 'Cód. Produto'], keep='first')
+    df = pd.concat([df_sem_duplicatas, df_serial_vazio], ignore_index=True)
+
+    # Criar coluna concatenada 'Serial_Conc' para "df"
+    df['Serial_Conc'] = df[['Id. Estoq. Físico', 'Cód. Produto', 'Serial']].apply(lambda x: ''.join([str(i) for i in x if pd.notna(i)]), axis=1)
+
+    # Classificação dos materiais com base no dicionário "sit"
+    sit = {'MATERIAL DO CLIENTE': 'DISPONÍVEL', 'RETIRADA': 'RETIRADA', 'DEFEITO': 'DEFEITO', 'SUCATA': 'INSERVÍVEL', '0,0000': 'DISPONÍVEL'}
+    df['CLASSIFICAÇÃO'] = df['Classificação'].apply(lambda x: sit.get(x, x))
+
+    # Filtrar defeitos e materiais disponíveis
+    defeito = df[(df['CLASSIFICAÇÃO'] != 'DISPONÍVEL') | (df['Id. Estoq. Físico'] == 3446)]
+    df = df[(df['CLASSIFICAÇÃO'] == 'DISPONÍVEL') & (df['Id. Estoq. Físico'] != 3446)]
+
+    # Reordenar colunas de "df"
+    colunas_meio = [col for col in df.columns if col not in colunas_inicio + colunas_fim]
+    
+    df = df[colunas_inicio + colunas_meio + colunas_fim]
+
+    vol.rename(columns={'CODIGO_PRODUTO':'Cód. Produto'}, inplace=True)
+    vol.rename(columns={'IDTEL':'ID Tel'}, inplace=True)
+
+
+    # Mesclar "vol" com "fabr" e "id_tel" para adicionar fabricantes e localidades
+    vol = pd.merge(vol, fabr[['Cód. Produto', 'Fabricante']], on='Cód. Produto', how='left')
+    vol = pd.merge(vol, id_tel[['ID Tel', 'LOCALIDADE', 'SUPERVISAO']], on='ID Tel', how='left')
+
+    # Converter as colunas em uma lista para reorganização
+    colunas = vol.columns.tolist()
+
+    # Encontrar os índices das colunas 'I.C' e 'Fabricante'
+    indice_ic, indice_fabricante = colunas.index('ITEM_CONTABIL'), colunas.index('Fabricante')
+
+    # Trocar as colunas 'I.C' e 'Fabricante' de lugar
+    colunas[indice_ic], colunas[indice_fabricante] = colunas[indice_fabricante], colunas[indice_ic]
+
+    # Reorganizar o DataFrame de acordo com a nova ordem de colunas
+    vol = vol[colunas]
+
+    # Lista de códigos para manter na coluna 'I.C' da planilha 'vol'
+    codigos_ic_para_manter = [11701, 11601, 10201]
+
+    # Filtrar o DataFrame 'vol' para manter apenas os códigos na lista da coluna 'I.C'
+    vol = vol[vol['ITEM_CONTABIL'].isin(codigos_ic_para_manter)]
+
+    rep.rename(columns={'Cód. Estoque Físico':'Id. Estoq. Físico'}, inplace=True)
+
+    reparo = pd.merge(rep, loc[['Id. Estoq. Físico', 'LOCALIDADE']], on='Id. Estoq. Físico', how='left')
+
+    # Criar coluna concatenada 'Serial_Conc' para "reparo"
+    reparo['Serial_Conc'] = reparo[['Id. Estoq. Físico', 'Cód. Produto', 'Complemento Remessa']].apply(lambda x: ''.join([str(i) for i in x if pd.notna(i)]), axis=1)
+
+    # Reordenar colunas de "reparo" e remover colunas desnecessárias
+    colunas = reparo.columns.tolist()
+    colunas_inicio = ['LOCALIDADE']
+    colunas_fim = ['Serial_Conc']
+
+    colunas_meio = [col for col in reparo.columns if col not in colunas_inicio + colunas_fim]
+    reparo = reparo[colunas_inicio + colunas_meio + colunas_fim]
+    reparo = reparo.drop(['Material do Fornecedor', 'Cód. Natureza NF'], axis=1)
+
+    # Calcular dias desde a 'Data Status Atual' e adicionar coluna 'Dias'
+    reparo['Dias'] = (datetime.now() - reparo['Data Status Atual']).dt.days
+    posicao_coluna = reparo.columns.get_loc('Data Status Atual')
+    reparo.insert(posicao_coluna + 1, 'Dias', reparo.pop('Dias'))
+
+    # Lista de códigos para manter
+    codigos_para_manter = [2887, 3096, 2908, 3095, 2911, 2888, 3098, 3446, 2909, 2953, 3448,
+                        2912, 2940, 2938, 3185, 3722, 3723, 3721, 3690, 3691, 3704, 3706,
+                        3703, 3707, 3694, 3695, 3697, 3698, 3700, 3701, 3692, 3447, 2910, 2889]
+
+    # Filtrar o DataFrame "reparo" para manter apenas os códigos na lista
+    reparo = reparo[reparo['Id. Estoq. Físico'].isin(codigos_para_manter)]
+
+    # Aplicar filtro de Serial_Conc para "df" e "defeito"
+    df = df[~df['Serial_Conc'].isin(reparo['Serial_Conc'])]
+    defeito = defeito[~defeito['Serial_Conc'].isin(reparo['Serial_Conc'])]
+
+    # Mover 'Serial_Conc' para o final no DataFrame "df"
+    colunas = df.columns.tolist()
+    colunas.append(colunas.pop(colunas.index('Serial_Conc')))
+    df = df[colunas]
+
+    # Atualizar classificação dos defeitos com base no dicionário "sit"
+    sit_defeito = {'RETIRADA': 'DEFEITO', 'INSERVÍVEL': 'INSERVÍVEL', 'DISPONÍVEL': 'INSERVÍVEL'}
+    defeito['CLASSIFICAÇÃO'] = defeito['CLASSIFICAÇÃO'].apply(lambda x: sit_defeito.get(x, x))
+
+    # Ajustar a classificação em "sob"
+    Sob_ajuste = {'MATERIAL DO CLIENTE': 'DISPONÍVEL', 'DEFEITO': 'DEFEITO'}
+    sob['CLASSIFICAÇÃO'] = sob['Classificação'].apply(lambda x: Sob_ajuste.get(x, x))
+
+    defeito = defeito.drop('Classificação', axis=1)
+    df = df.drop('Classificação', axis = 1)
+
+    # Obter a lista de colunas e reordenar o DataFrame "defeito"
+    colunas = defeito.columns.tolist()
+    colunas.remove('LOCALIDADE')
+    colunas.remove('Id. Estoq. Físico')
+    colunas.remove('Desc. Estoque Físico')
+    colunas.remove('Serial_Conc')
+
+    colunas.insert(0, 'LOCALIDADE')
+    colunas.extend(['Id. Estoq. Físico', 'Desc. Estoque Físico', 'Serial_Conc'])
+    defeito = defeito[colunas]
+
+    # Preencher valores ausentes de "Fabricante"
+    for dataset in [sob, df, vol, defeito]:
+        dataset['Fabricante'] = dataset['Fabricante'].fillna('NÃO LOC')
+
+    if os.path.exists('planilhas_combinadas.xlsx'):
+            os.remove('planilhas_combinadas.xlsx')    
+
+    # Criar arquivo Excel com múltiplas abas
+    with pd.ExcelWriter('planilhas_combinadas.xlsx', engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name='Saldo', index=False)
+        vol.to_excel(writer, sheet_name='Volante', index=False)
         reparo.to_excel(writer, sheet_name='Reparo', index=False)
+        defeito.to_excel(writer, sheet_name='Defeito', index=False)
         sob.to_excel(writer, sheet_name='Sobressalentes', index=False)
 
-    return 'planilhas.xlsx'
-
-# Função para exibir os dados brutos e processar o arquivo
-def carregar_e_processar_dados():
-    st.title("Relatorio de Sobressalentes - Norte")
-
-    # Upload do arquivo de dados brutos
-    file = st.file_uploader("Carregar arquivo Excel com os dados brutos", type=["xlsx"])
-
-    if file:
-        st.success("Arquivo carregado com sucesso. Processando os dados...")
-
-        # Processar o arquivo e salvar como 'planilhas.xlsx'
-        caminho_arquivo_processado = processar_dados_iniciais(file)
-
-     
-
-# Chamar a função de carregar e processar os dados
-carregar_e_processar_dados()
-
-# Função para processar "planilhas.xlsx" e gerar "planilhas_combinadas.xlsx"
-def gerar_planilhas_combinadas():
-    df_saldo = pd.read_excel('planilhas.xlsx', sheet_name='Saldo')
-    df_volante = pd.read_excel('planilhas.xlsx', sheet_name='Volante')
-    df_reparo = pd.read_excel('planilhas.xlsx', sheet_name='Reparo')
-    df_sobressalentes = pd.read_excel('planilhas.xlsx', sheet_name='Sobressalentes')
-
-    # Processamento adicional e merge das informações (exemplo do seu código anterior)
-    # Aqui você pode fazer o merge com outros arquivos, adicionar colunas, ou ajustar os dados conforme a necessidade.
-    
-    # Criar o arquivo final "planilhas_combinadas.xlsx"
-    with pd.ExcelWriter('planilhas_combinadas.xlsx', engine='xlsxwriter') as writer:
-        df_saldo.to_excel(writer, sheet_name='Saldo', index=False)
-        df_volante.to_excel(writer, sheet_name='Volante', index=False)
-        df_reparo.to_excel(writer, sheet_name='Reparo', index=False)
-        df_sobressalentes.to_excel(writer, sheet_name='Sobressalentes', index=False)
-
-    return 'planilhas_combinadas.xlsx'
-
-
+    print("As planilhas foram combinadas em um único arquivo com sucesso.")
 
 
 # Função para padronizar os nomes das localidades
@@ -344,9 +481,6 @@ else:
         st.markdown("<h2 style='text-align: center;'>Relatório Saldo DW DM</h2>", unsafe_allow_html=True)
         st.dataframe(df_dw_dm.style.hide(axis='index'))
         gerar_download_excel(df_dw_dm, 'relatorio_saldo_dw_dm')
-
-               
-
 
 
 
