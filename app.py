@@ -5,73 +5,71 @@ import os
 from datetime import datetime
 
 
-# Função para limpar e processar os dados brutos e salvar como "planilhas.xlsx"
+import streamlit as st
+import pandas as pd
+import os
 
+# Definir a configuração da página
 st.set_page_config(page_title="Relatório Completo de Sobressalentes", layout="wide")
-
 
 st.title("Relatório Completo de Sobressalentes")
 
+
+
 # Upload do arquivo de dados brutos
 file = st.file_uploader("Carregar arquivo Excel com os dados brutos", type=["xlsx"])
-if file is not None:
 
+if file:
     st.success("Arquivo carregado com sucesso. Processando os dados...")
 
-    try:
-        base = pd.read_excel('dados_brutos.xlsx')
-        volante = pd.read_excel('dados_brutos.xlsx', sheet_name='volante')
-        reparo = pd.read_excel('dados_brutos.xlsx', sheet_name='reparo')
-        sob = pd.read_excel('dados_brutos.xlsx', sheet_name='sobressalentes')
+    
+        # Ler os dados do arquivo carregado pelo usuário
+    base = pd.read_excel(file)
+    volante = pd.read_excel(file, sheet_name='volante')
+    reparo = pd.read_excel(file, sheet_name='reparo')
+    sob = pd.read_excel(file, sheet_name='sobressalentes')
 
-            # Remover espaços em branco dos nomes das colunas
-        base.columns = [x.strip() for x in base.columns]
-        volante.columns = [x.strip() for x in volante.columns]
-        reparo.columns = [x.strip() for x in reparo.columns]
-        sob.columns = [x.strip() for x in sob.columns]
+        # Remover espaços em branco dos nomes das colunas
+    base.columns = [x.strip() for x in base.columns]
+    volante.columns = [x.strip() for x in volante.columns]
+    reparo.columns = [x.strip() for x in reparo.columns]
+    sob.columns = [x.strip() for x in sob.columns]
 
-            # Limpeza e filtragem das planilhas
-        reparo = reparo[['Cód. Produto','Desc. Produto','Complemento Remessa','RMA','MBI','Desc. Status','N° Nota Fiscal',
-                'Série Nota Fiscal','Quantidade','Cód. Estoque Físico','Desc. Estoque Físico','Data Últ. Alteração',
-                'Material do Fornecedor','Cód. Natureza NF','Desc. Natureza NF','Cód. Fornecedor','Fornecedor',
-                'TA','Data Status Atual','Cód. RM','Data Cadastro RM','Data Empenho RM','Data Fechamento RM',
-                'Cód. Doc. Entrada','Data Fech. Doc. Entrada','Complemento Doc. Entrada','Data Aguard. RMA',
-                'Data Aguard. Rem. Fornec.','Data Aguard. Operacional','Data Aguard. Aprov. Contr.','Data Aguard. Escrituração',
-                'Data Aguard. NF','Data Aguard. ST','Data Aguard. Coleta','Data Coletado Em Trânsito','Data Recebido Fornecedor',
-                'Observação']]
-            
-        reparo = reparo[reparo['Desc. Status']!='COLETADO/TRÂNSITO']
+        # Limpeza e filtragem das planilhas
+    reparo = reparo[['Cód. Produto', 'Desc. Produto', 'Complemento Remessa', 'RMA', 'MBI', 'Desc. Status', 
+                         'N° Nota Fiscal', 'Série Nota Fiscal', 'Quantidade', 'Cód. Estoque Físico', 
+                         'Desc. Estoque Físico', 'Data Últ. Alteração', 'Material do Fornecedor', 'Cód. Natureza NF', 
+                         'Desc. Natureza NF', 'Cód. Fornecedor', 'Fornecedor', 'TA', 'Data Status Atual', 'Cód. RM', 
+                         'Data Cadastro RM', 'Data Empenho RM', 'Data Fechamento RM', 'Cód. Doc. Entrada', 
+                         'Data Fech. Doc. Entrada', 'Complemento Doc. Entrada', 'Data Aguard. RMA', 'Data Aguard. Rem. Fornec.',
+                         'Data Aguard. Operacional', 'Data Aguard. Aprov. Contr.', 'Data Aguard. Escrituração', 
+                         'Data Aguard. NF', 'Data Aguard. ST', 'Data Aguard. Coleta', 'Data Coletado Em Trânsito', 
+                         'Data Recebido Fornecedor', 'Observação']]
 
-        base = base[['Cód. Produto','Desc. Produto','Qtd Estoque','Serial','Part Number','Code','Classificação','Id. Estoq. Físico',
-            'Desc. Estoque Físico']]
+    reparo = reparo[reparo['Desc. Status'] != 'COLETADO/TRÂNSITO']
 
-        volante = volante[['IDTEL','NOME_VOLANTE','CODIGO_PRODUTO','DESCRICAO_PRODUTO','SALDO','COMPLEMENTAR','PART_NUMBER',
-                'QTDE_DIAS_ATEND_ULT_RM','DESCRICAO_CLASSIFICACAO','ITEM_CONTABIL']]
+    base = base[['Cód. Produto', 'Desc. Produto', 'Qtd Estoque', 'Serial', 'Part Number', 'Code', 
+                     'Classificação', 'Id. Estoq. Físico', 'Desc. Estoque Físico']]
 
-            # Ajuste de classificação
-        sit = {'MATERIAL DO CLIENTE': 'DISPONÍVEL', 'RETIRADA': 'RETIRADA'}
-        volante['DESCRICAO_CLASSIFICACAO'] = volante['DESCRICAO_CLASSIFICACAO'].apply(lambda x: sit.get(x, x))
+    volante = volante[['IDTEL', 'NOME_VOLANTE', 'CODIGO_PRODUTO', 'DESCRICAO_PRODUTO', 'SALDO', 'COMPLEMENTAR', 
+                           'PART_NUMBER', 'QTDE_DIAS_ATEND_ULT_RM', 'DESCRICAO_CLASSIFICACAO', 'ITEM_CONTABIL']]
 
-        sob = sob[['Cód. Produto','Desc. Produto','Qtd Estoque','Serial','Part Number','Classificação',
-                    'Id. Estoq. Físico', 'Desc. Estoque Físico']]
+        # Ajuste de classificação
+    sit = {'MATERIAL DO CLIENTE': 'DISPONÍVEL', 'RETIRADA': 'RETIRADA'}
+    volante['DESCRICAO_CLASSIFICACAO'] = volante['DESCRICAO_CLASSIFICACAO'].apply(lambda x: sit.get(x, x))
 
-            # Sobrescrever planilhas antigas e salvar novas planilhas limpas
-        if os.path.exists('planilhas.xlsx'):
-                os.remove('planilhas.xlsx')
+    sob = sob[['Cód. Produto', 'Desc. Produto', 'Qtd Estoque', 'Serial', 'Part Number', 'Classificação', 
+                   'Id. Estoq. Físico', 'Desc. Estoque Físico']]
 
-        with pd.ExcelWriter('planilhas.xlsx', engine='xlsxwriter') as writer:
-                base.to_excel(writer, sheet_name='Saldo', index=False)
-                volante.to_excel(writer, sheet_name='Volante', index=False)
-                reparo.to_excel(writer, sheet_name='Reparo', index=False)
-                sob.to_excel(writer, sheet_name='Sobressalentes', index=False)
-        st.success("Dados processados com sucesso e planilhas criadas.")
+        # Sobrescrever planilhas antigas e salvar novas planilhas limpas
+    with pd.ExcelWriter('planilhas.xlsx', engine='xlsxwriter') as writer:
+            base.to_excel(writer, sheet_name='Saldo', index=False)
+            volante.to_excel(writer, sheet_name='Volante', index=False)
+            reparo.to_excel(writer, sheet_name='Reparo', index=False)
+            sob.to_excel(writer, sheet_name='Sobressalentes', index=False)
+    st.success("Dados processados com sucesso e planilhas criadas.")
 
-    except Exception as e:
-        st.error(f"Erro ao processar o arquivo: {e}")
-else:
-    st.warning("Por favor, carregue o arquivo de dados brutos.")        
-
-
+   
 
         # Leitura dos arquivos gerados
     
