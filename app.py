@@ -12,7 +12,7 @@ import os
 # Definir a configuração da página
 st.set_page_config(page_title="Relatório Completo de Sobressalentes", layout="wide")
 
-st.title("Relatório Completo de Sobressalentes")
+st.title("Relatório Completo de Sobressalentes Norte")
 
 
 
